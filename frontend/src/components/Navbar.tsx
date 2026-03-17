@@ -23,7 +23,7 @@ export default function Navbar() {
         {/* Logo */}
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-[#a3e635] text-lg animate-spin-slow inline-block">✦</span>
-          <span className="text-lg font-bold tracking-tight">PixelAI</span>
+          <span className="text-lg font-bold tracking-tight">GenPix</span>
         </div>
 
         {/* Nav Links */}
