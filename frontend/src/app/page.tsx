@@ -4,8 +4,7 @@ import HeroSection from "@/components/HeroSection";
 
 export default function Home() {
   return (
-    <main className="h-screen overflow-hidden bg-black">
-      {/* <Navbar/> */}
+    <main className="overflow-hidden bg-black pt-4">
       <HeroSection />
       <FeaturesSection />
     </main>
