@@ -1,9 +1,11 @@
-@import "tailwindcss";
-
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
 
 @theme {
   --font-sans: 'Space Grotesk', sans-serif;
+  --font-pixel: 'Pixelify Sans', monospace;
   --color-accent: #a3e635;
   --color-accent-dim: #84cc16;
   --color-accent-glow: rgba(163, 230, 53, 0.3);
