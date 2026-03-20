@@ -1,8 +1,12 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   images: {
-    domains: ['i.pinimg.com'],
+    remotePatterns: [
+      { hostname: "i.pinimg.com" },
+      { hostname: "image.pollinations.ai" },
+    ],
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

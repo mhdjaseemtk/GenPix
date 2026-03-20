@@ -48,13 +48,13 @@ export default function Navbar() {
 
         <div className="flex shrink-0 items-center gap-4">
           <Link
-            href="/about"
+            href="/generate"
             className="hidden text-sm text-gray-400 transition-colors duration-200 hover:text-white md:block"
           >
             Learn more
           </Link>
           <Link
-            href="/contact"
+            href="/generate"
             className="group inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#090909] transition-all duration-200 hover:-translate-y-px hover:bg-[#a3e635] hover:shadow-[0_4px_20px_rgba(163,230,53,0.3)]"
           >
             Get Started
