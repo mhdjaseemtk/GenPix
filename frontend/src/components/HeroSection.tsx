@@ -31,7 +31,7 @@ export default function HeroSection() {
         {/* CTA */}
         <div className="animate-fade-up-3">
           <a
-            href="#gallery"
+            href="/generate"
             className="group relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-white/10 bg-[#0a0a0a] px-6 py-2.5 text-sm font-medium tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#111] hover:shadow-[0_0_24px_rgba(163,230,53,0.15)]"
           >
             {/* Top glowing border effect */}
