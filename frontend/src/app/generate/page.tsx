@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 
 const SIZE_PRESETS = [
   { label: "Square (1:1)", w: 1024, h: 1024 },
@@ -9,13 +9,14 @@ const SIZE_PRESETS = [
   { label: "Wide (21:9)", w: 1536, h: 640 },
 ];
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function GeneratePage() {
   const [prompt, setPrompt] = useState("");
   const [sizeIdx, setSizeIdx] = useState(0);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
 
   const selectedSize = SIZE_PRESETS[sizeIdx];
 
@@ -26,44 +27,44 @@ export default function GeneratePage() {
     setImageUrl(null);
 
     try {
-      const encodedPrompt = encodeURIComponent(prompt.trim());
-      const seed = Math.floor(Math.random() * 1000000);
-      const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${selectedSize.w}&height=${selectedSize.h}&seed=${seed}&nologo=true`;
+      const res = await fetch(`${API_URL}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          width: selectedSize.w,
+          height: selectedSize.h,
+        }),
+      });
 
-      // Pre-load the image to know when it's ready
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        setImageUrl(url);
-        setLoading(false);
-      };
-      img.onerror = () => {
-        setError("Image generation failed. Please try a different prompt.");
-        setLoading(false);
-      };
-      img.src = url;
-    } catch {
-      setError("Something went wrong. Please try again.");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Generation failed");
+      }
+
+      // Backend returns the image as a blob
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      setImageUrl(blobUrl);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again."
+      );
+    } finally {
       setLoading(false);
     }
   }
 
-  async function handleDownload() {
+  function handleDownload() {
     if (!imageUrl) return;
-    try {
-      const res = await fetch(imageUrl);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `genpix-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      alert("Download failed. Please right-click the image and save manually.");
-    }
+    const a = document.createElement("a");
+    a.href = imageUrl;
+    a.download = `genpix-${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   return (
@@ -84,7 +85,10 @@ export default function GeneratePage() {
       {/* Generator card */}
       <div className="animate-fade-up-3 mx-auto max-w-3xl rounded-2xl border border-white/8 bg-[#0c0c0c] p-6 md:p-8 shadow-[0_0_80px_-20px_rgba(163,230,53,0.08)]">
         {/* Prompt input */}
-        <label htmlFor="prompt-input" className="block text-xs font-semibold uppercase tracking-[0.18em] text-white/50 mb-2">
+        <label
+          htmlFor="prompt-input"
+          className="block text-xs font-semibold uppercase tracking-[0.18em] text-white/50 mb-2"
+        >
           Prompt
         </label>
         <textarea
@@ -135,9 +139,24 @@ export default function GeneratePage() {
           >
             {loading ? (
               <>
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
                 </svg>
                 Generating…
               </>
@@ -178,14 +197,16 @@ export default function GeneratePage() {
         {imageUrl && !loading && (
           <div className="mt-6 overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0a] animate-fade-up">
             <img
-              ref={imgRef}
               src={imageUrl}
               alt={prompt}
               className="w-full object-contain"
               style={{ maxHeight: "600px" }}
             />
             <div className="flex items-center justify-between border-t border-white/8 px-4 py-3">
-              <p className="max-w-[70%] truncate text-xs text-white/40" title={prompt}>
+              <p
+                className="max-w-[70%] truncate text-xs text-white/40"
+                title={prompt}
+              >
                 &ldquo;{prompt}&rdquo;
               </p>
               <button
@@ -193,8 +214,18 @@ export default function GeneratePage() {
                 onClick={handleDownload}
                 className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-white transition-all duration-200 hover:border-[#a3e635]/40 hover:bg-[#a3e635]/10 hover:text-[#a3e635]"
               >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3"
+                  />
                 </svg>
                 Download
               </button>
