@@ -5,6 +5,8 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const API_KEY = process.env.POLLINATIONS_API_KEY || '';
+const POLLINATIONS_BASE_URL =
+  process.env.POLLINATIONS_BASE_URL || 'https://image.pollinations.ai';
 
 app.use(cors());
 app.use(express.json());
@@ -13,7 +15,7 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to the GenPix API!' });
 });
 
-// POST /api/generate — AI image generation via Pollinations.ai (gen.pollinations.ai)
+// POST /api/generate - AI image generation via Pollinations.ai
 // Returns the image as a proxied blob to avoid CORS issues
 app.post('/api/generate', async (req, res) => {
   try {
@@ -23,29 +25,26 @@ app.post('/api/generate', async (req, res) => {
       return res.status(400).json({ error: 'A non-empty prompt is required.' });
     }
 
-    if (!API_KEY) {
-      return res.status(500).json({
-        error: 'Server misconfiguration: POLLINATIONS_API_KEY is not set. See backend/.env.example.',
-      });
-    }
-
     const encodedPrompt = encodeURIComponent(prompt.trim());
     const seed = Math.floor(Math.random() * 1000000);
-    const imageUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
+    const imageUrl = `${POLLINATIONS_BASE_URL}/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
 
     // 60-second timeout to avoid hanging requests
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);
 
-    const imageRes = await fetch(imageUrl, {
-      headers: {
-        'User-Agent': 'GenPix/1.0',
-        'Authorization': `Bearer ${API_KEY}`,
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
+    let imageRes;
+    try {
+      imageRes = await fetch(imageUrl, {
+        headers: {
+          'User-Agent': 'GenPix/1.0',
+          ...(API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
+        },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!imageRes.ok) {
       const errorBody = await imageRes.text().catch(() => '');
@@ -65,6 +64,14 @@ app.post('/api/generate', async (req, res) => {
       console.error('Image generation timed out after 60s');
       return res.status(504).json({ error: 'Image generation timed out. Please try again.' });
     }
+
+    if (err.cause?.code === 'UND_ERR_CONNECT_TIMEOUT') {
+      console.error('Image generation upstream connection timed out:', err.cause);
+      return res.status(504).json({
+        error: 'The image provider did not respond in time. Please try again in a moment.',
+      });
+    }
+
     console.error('Image generation error:', err);
     return res.status(500).json({ error: 'Failed to generate image. Please try again.' });
   }
