@@ -499,7 +499,6 @@ export const CircularGallery = ({
             showText,
             visibleCount,
         });
-        requestAnimationFrame(() => app.update());
         return () => app.destroy();
     }, [
         items,
