@@ -121,7 +121,7 @@ export default function ChatPage() {
                 Demo Chat
               </p>
               <h1 className="mt-4 text-[clamp(2.2rem,5vw,4.8rem)] font-semibold leading-[0.95] tracking-tight">
-                A dummy ChatGPT-style page for your frontend.
+               GenPix Chat Botp
               </h1>
               <p className="mt-5 max-w-lg text-sm leading-7 text-white/65 md:text-base">
                 This page is a visual mock chat experience. It looks alive,
