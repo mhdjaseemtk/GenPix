@@ -35,6 +35,9 @@
 | **Instant Download** | Download generated images as PNG with a single click |
 | **Prompt Suggestions** | Pre-built creative prompts to spark inspiration |
 | **Circular Gallery** | Interactive 3D circular image gallery on the landing page (powered by OGL / WebGL) |
+| **Showcase Gallery** | Curated gallery page browsing AI-generated images by style category |
+| **AI Chat** | Dummy conversational AI chat interface page |
+| **Voice Assistant** | Dummy AI voice assistant interface page |
 | **Dark Theme** | Premium dark UI with lime-green accents and smooth animations |
 | **Responsive Design** | Fully responsive across desktop, tablet, and mobile devices |
 | **Zero Auth Required** | No sign-up, no API key — start generating immediately |
@@ -133,14 +136,24 @@ GenPix/
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── layout.tsx    # Root layout (Navbar + Footer)
-│   │   │   ├── page.tsx      # Landing page (Hero + Gallery)
+│   │   │   ├── page.tsx      # Landing page (Hero + Circular Gallery)
 │   │   │   ├── globals.css   # Global styles, theme tokens, animations
 │   │   │   ├── generate/
-│   │   │   │   └── page.tsx  # AI image generation page
-│   │   │   ├── about/        # About page
-│   │   │   ├── pricing/      # Pricing page
-│   │   │   ├── blog/         # Blog page
-│   │   │   └── contact/      # Contact page
+│   │   │   │   └── page.tsx  # AI image generation page (/generate)
+│   │   │   ├── gallery/
+│   │   │   │   └── page.tsx  # Showcase gallery — browse by style (/gallery)
+│   │   │   ├── about/
+│   │   │   │   └── page.tsx  # About GenPix — mission, stats, values (/about)
+│   │   │   ├── pricing/
+│   │   │   │   └── page.tsx  # Pricing plans with toggle (/pricing)
+│   │   │   ├── blog/
+│   │   │   │   └── page.tsx  # Featured posts & article card grid (/blog)
+│   │   │   ├── contact/
+│   │   │   │   └── page.tsx  # Contact form with sidebar (/contact)
+│   │   │   ├── chat/
+│   │   │   │   └── page.tsx  # AI chat interface (dummy) (/chat)
+│   │   │   └── voice/
+│   │   │       └── page.tsx  # AI voice assistant interface (dummy) (/voice)
 │   │   │
 │   │   └── components/
 │   │       ├── Navbar.tsx          # Sticky navigation bar
@@ -148,7 +161,7 @@ GenPix/
 │   │       ├── FeaturesSection.tsx # Circular gallery showcase
 │   │       ├── CircularGallery.tsx # WebGL 3D circular gallery (OGL)
 │   │       ├── ImageCarousel.tsx   # Image carousel component
-│   │       └── Footer.tsx         # Site footer
+│   │       └── Footer.tsx          # Site footer
 │   │
 │   ├── package.json
 │   ├── tsconfig.json
@@ -158,6 +171,22 @@ GenPix/
 │
 └── README.md
 ```
+
+---
+
+## 📄 Pages
+
+| Route | Page | Description |
+|---|---|---|
+| `/` | Landing | Hero section with animated headline, CTA button, and WebGL circular image gallery |
+| `/generate` | Generate | Full-featured AI image generation UI with prompt input, aspect ratio selector, and download |
+| `/gallery` | Gallery | Curated showcase of AI-generated images organised into 6 style categories with hover previews |
+| `/about` | About | Mission statement, live stats (images generated, uptime, users), and core values grid |
+| `/pricing` | Pricing | Free / Pro / Enterprise plan cards with monthly/annual billing toggle and feature comparison |
+| `/blog` | Blog | Featured article hero, category filter tags, and a responsive article card grid |
+| `/contact` | Contact | Multi-field contact form with inquiry type selector and contact details sidebar |
+| `/chat` | Chat | AI chat assistant interface (dummy UI, ready for backend integration) |
+| `/voice` | Voice | AI voice assistant interface (dummy UI, ready for backend integration) |
 
 ---
 
