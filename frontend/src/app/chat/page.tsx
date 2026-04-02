@@ -2,111 +2,126 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 
-type Message = {
+type TextMessage = {
   id: number;
   role: "assistant" | "user";
+  type: "text";
   content: string;
 };
+
+type ImageMessage = {
+  id: number;
+  role: "assistant";
+  type: "image";
+  imageUrl: string;
+  prompt: string;
+};
+
+type Message = TextMessage | ImageMessage;
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 const STARTER_MESSAGES: Message[] = [
   {
     id: 1,
     role: "assistant",
+    type: "text",
     content:
-      "Hi, I am GenPix Chat Dummy. I do not connect to ChatGPT yet, but I can fake a smooth demo conversation for your page.",
+      "Hi! I'm GenPix Chat. Describe any image you want and I'll generate it for you instantly. ✦",
   },
   {
     id: 2,
     role: "assistant",
+    type: "text",
     content:
-      "Try asking for image ideas, startup names, captions, or a product pitch. I will answer with placeholder AI-style responses.",
+      "Try something like: \"A cyberpunk city at night with neon lights\" or \"A peaceful Japanese garden at golden hour\".",
   },
 ];
 
 const QUICK_PROMPTS = [
-  "Give me a futuristic product tagline",
-  "Write a short caption for an AI art post",
-  "Suggest startup names for an image app",
-  "Plan a landing page headline",
+  "A cyberpunk samurai in neon-lit Tokyo",
+  "Underwater crystal palace with bioluminescent creatures",
+  "Steampunk airship through aurora borealis",
+  "Minimalist Japanese garden at golden hour",
 ];
-
-const DUMMY_REPLIES = [
-  "Here is a polished dummy answer: your idea feels modern, premium, and ready for a bold launch.",
-  "Mock AI response loaded. I would position this with sharper wording, stronger contrast, and a cleaner call to action.",
-  "Pretend I am thinking deeply... Done. The best next step is to keep the message short, visual, and easy to scan.",
-  "Demo mode says yes: this concept works best when it feels fast, playful, and a little cinematic.",
-  "Sample assistant reply: I would turn that into three versions, one minimal, one dramatic, and one conversion-focused.",
-];
-
-function buildDummyReply(input: string, turn: number) {
-  const normalized = input.toLowerCase();
-
-  if (normalized.includes("name")) {
-    return "Dummy AI suggestion: PixelMint, PromptBloom, NeonNest, FrameForge, and GenGlow all fit a creative product vibe.";
-  }
-
-  if (normalized.includes("caption")) {
-    return 'Dummy caption: "Built from a prompt, shaped for attention, ready to post."';
-  }
-
-  if (normalized.includes("tagline") || normalized.includes("headline")) {
-    return 'Dummy line: "Turn rough ideas into scroll-stopping visuals in seconds."';
-  }
-
-  if (normalized.includes("image") || normalized.includes("art")) {
-    return "Placeholder creative brief: use neon lighting, cinematic framing, layered depth, and one standout color accent to make the image pop.";
-  }
-
-  return DUMMY_REPLIES[turn % DUMMY_REPLIES.length];
-}
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>(STARTER_MESSAGES);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
-  const nextMessageIdRef = useRef(3);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const nextIdRef = useRef(3);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isGenerating]);
 
-  function sendMessage(text: string) {
+  async function sendMessage(text: string) {
     const trimmed = text.trim();
+    if (!trimmed || isGenerating) return;
 
-    if (!trimmed || isTyping) {
-      return;
-    }
-
-    const userMessage: Message = {
-      id: nextMessageIdRef.current++,
+    // Add user message
+    const userMsg: TextMessage = {
+      id: nextIdRef.current++,
       role: "user",
+      type: "text",
       content: trimmed,
     };
-
-    setMessages((current) => [...current, userMessage]);
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
-    setIsTyping(true);
+    setIsGenerating(true);
 
-    timeoutRef.current = window.setTimeout(() => {
-      const assistantMessage: Message = {
-        id: nextMessageIdRef.current++,
+    try {
+      const res = await fetch(`${API_URL}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: trimmed, width: 1024, height: 1024 }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Generation failed");
+      }
+
+      const blob = await res.blob();
+      const imageUrl = URL.createObjectURL(blob);
+
+      const imageMsg: ImageMessage = {
+        id: nextIdRef.current++,
         role: "assistant",
-        content: buildDummyReply(trimmed, messages.length),
+        type: "image",
+        imageUrl,
+        prompt: trimmed,
       };
-
-      setMessages((current) => [...current, assistantMessage]);
-      setIsTyping(false);
-    }, 900);
+      setMessages((prev) => [...prev, imageMsg]);
+    } catch (err) {
+      const errorMsg: TextMessage = {
+        id: nextIdRef.current++,
+        role: "assistant",
+        type: "text",
+        content:
+          err instanceof Error
+            ? `⚠️ ${err.message}`
+            : "⚠️ Something went wrong. Please try again.",
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     sendMessage(input);
+  }
+
+  function handleDownload(imageUrl: string, prompt: string) {
+    const a = document.createElement("a");
+    a.href = imageUrl;
+    a.download = `genpix-${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   return (
@@ -116,34 +131,35 @@ export default function ChatPage() {
           <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[#d9f99d] to-transparent opacity-80" />
 
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+            {/* Left panel */}
             <div className="max-w-xl">
               <p className="font-pixel text-sm uppercase tracking-[0.28em] text-[#bef264]">
-                Demo Chat
+                Image Chat
               </p>
               <h1 className="mt-4 text-[clamp(2.2rem,5vw,4.8rem)] font-semibold leading-[0.95] tracking-tight">
-               GenPix Chat Botp
+                GenPix Chat
               </h1>
               <p className="mt-5 max-w-lg text-sm leading-7 text-white/65 md:text-base">
-                This page is a visual mock chat experience. It looks alive,
-                responds locally, and is perfect for demos until you connect a
-                real AI API.
+                Describe any image in plain words and GenPix will generate it
+                live. Every message creates a real AI image — no mocks, no
+                placeholders.
               </p>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                    Mode
-                  </p>
-                  <p className="mt-2 text-lg font-medium text-white">
-                    Local dummy replies
-                  </p>
-                </div>
                 <div className="rounded-2xl border border-[#a3e635]/20 bg-[#a3e635]/8 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-[#d9f99d]/70">
-                    Best use
+                    Mode
                   </p>
                   <p className="mt-2 text-lg font-medium text-[#f7fee7]">
-                    Demo and UI testing
+                    Live AI generation
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                    Powered by
+                  </p>
+                  <p className="mt-2 text-lg font-medium text-white">
+                    Pollinations.ai
                   </p>
                 </div>
               </div>
@@ -154,7 +170,8 @@ export default function ChatPage() {
                     key={prompt}
                     type="button"
                     onClick={() => sendMessage(prompt)}
-                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/65 transition duration-200 hover:border-[#a3e635]/40 hover:bg-[#a3e635]/10 hover:text-white"
+                    disabled={isGenerating}
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/65 transition duration-200 hover:border-[#a3e635]/40 hover:bg-[#a3e635]/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {prompt}
                   </button>
@@ -162,86 +179,126 @@ export default function ChatPage() {
               </div>
             </div>
 
+            {/* Right panel — chat */}
             <div className="relative">
               <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-[#a3e635]/15 via-transparent to-white/5 blur-2xl" />
               <div className="relative rounded-[28px] border border-white/10 bg-[#0d0d0d]/95 p-4 backdrop-blur-xl md:p-5">
+                {/* Header */}
                 <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-black/30 px-4 py-3">
                   <div>
                     <p className="text-sm font-medium text-white">
-                      GenPix Assistant
+                      GenPix Image Bot
                     </p>
                     <p className="mt-1 text-xs text-white/45">
-                      Fake AI conversation for previews
+                      Type a prompt — get a real AI image
                     </p>
                   </div>
                   <div className="flex items-center gap-2 rounded-full border border-[#a3e635]/20 bg-[#a3e635]/10 px-3 py-1 text-xs text-[#d9f99d]">
                     <span className="h-2 w-2 rounded-full bg-[#a3e635] animate-pulse-dot" />
-                    Online
+                    Live
                   </div>
                 </div>
 
+                {/* Messages */}
                 <div className="mt-4 h-[460px] space-y-3 overflow-y-auto rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-4 md:h-[520px]">
                   {messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`max-w-[88%] rounded-3xl px-4 py-3 text-sm leading-6 shadow-[0_12px_30px_rgba(0,0,0,0.18)] ${
-                        message.role === "assistant"
-                          ? "rounded-tl-md border border-white/10 bg-white/6 text-white/80"
-                          : "ml-auto rounded-br-md bg-[#a3e635] text-black"
-                      }`}
+                      className={`${message.role === "user" ? "flex justify-end" : "flex justify-start"
+                        }`}
                     >
-                      {message.content}
+                      {message.type === "text" ? (
+                        <div
+                          className={`max-w-[88%] rounded-3xl px-4 py-3 text-sm leading-6 shadow-[0_12px_30px_rgba(0,0,0,0.18)] ${message.role === "assistant"
+                              ? "rounded-tl-md border border-white/10 bg-white/6 text-white/80"
+                              : "rounded-br-md bg-[#a3e635] text-black"
+                            }`}
+                        >
+                          {message.content}
+                        </div>
+                      ) : (
+                        <div className="max-w-[88%] overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a]">
+                          <img
+                            src={message.imageUrl}
+                            alt={message.prompt}
+                            className="w-full object-cover"
+                            style={{ maxHeight: "300px" }}
+                          />
+                          <div className="flex items-center justify-between border-t border-white/8 px-3 py-2">
+                            <p className="max-w-[70%] truncate text-xs text-white/40" title={message.prompt}>
+                              &ldquo;{message.prompt}&rdquo;
+                            </p>
+                            <button
+                              onClick={() => handleDownload(message.imageUrl, message.prompt)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs text-white transition-all duration-200 hover:border-[#a3e635]/40 hover:text-[#a3e635]"
+                            >
+                              <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+                              </svg>
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
 
-                  {isTyping && (
-                    <div className="max-w-[120px] rounded-3xl rounded-tl-md border border-white/10 bg-white/6 px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-[#a3e635] animate-pulse-dot" />
-                        <span
-                          className="h-2 w-2 rounded-full bg-[#a3e635] animate-pulse-dot"
-                          style={{ animationDelay: "0.2s" }}
+                  {/* Generating indicator */}
+                  {isGenerating && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[88%] overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a]">
+                        <div
+                          className="animate-shimmer bg-gradient-to-r from-[#111] via-[#1a1a1a] to-[#111] bg-[length:200%_100%]"
+                          style={{ width: "260px", height: "180px" }}
                         />
-                        <span
-                          className="h-2 w-2 rounded-full bg-[#a3e635] animate-pulse-dot"
-                          style={{ animationDelay: "0.4s" }}
-                        />
+                        <div className="flex items-center gap-2 px-3 py-2 text-xs text-white/40">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#a3e635] animate-pulse-dot" />
+                          Generating your image…
+                        </div>
                       </div>
                     </div>
                   )}
+
+                  <div ref={bottomRef} />
                 </div>
 
+                {/* Input */}
                 <form onSubmit={handleSubmit} className="mt-4">
                   <div className="rounded-[26px] border border-white/10 bg-black/30 p-3">
                     <textarea
                       value={input}
                       onChange={(event) => setInput(event.target.value)}
                       onKeyDown={(event) => {
-                        if (
-                          event.key === "Enter" &&
-                          !event.shiftKey &&
-                          !isTyping
-                        ) {
+                        if (event.key === "Enter" && !event.shiftKey && !isGenerating) {
                           event.preventDefault();
                           sendMessage(input);
                         }
                       }}
-                      rows={3}
-                      placeholder="Type anything... this is a dummy chat, so even fake prompts work."
+                      rows={2}
+                      placeholder="Describe an image… e.g. a dragon flying over a medieval city at dusk"
                       className="w-full resize-none bg-transparent px-2 py-2 text-sm text-white outline-none placeholder:text-white/25"
                     />
 
                     <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/8 pt-3">
                       <p className="text-xs text-white/35">
-                        Frontend-only demo chat. No API calls.
+                        {isGenerating ? "Generating… this may take 10–30s" : "Enter to send · Shift+Enter for new line"}
                       </p>
                       <button
                         type="submit"
-                        disabled={!input.trim() || isTyping}
+                        disabled={!input.trim() || isGenerating}
                         className="inline-flex items-center gap-2 rounded-full bg-[#a3e635] px-5 py-2 text-sm font-semibold text-black transition duration-200 hover:bg-[#bef264] disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        Send
-                        <span aria-hidden="true">→</span>
+                        {isGenerating ? (
+                          <>
+                            <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            Generating
+                          </>
+                        ) : (
+                          <>Generate ✦</>
+                        )}
                       </button>
                     </div>
                   </div>
